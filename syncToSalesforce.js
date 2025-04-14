@@ -5,7 +5,6 @@ const sqlite3 = require('sqlite3').verbose();
 const username = 'satyam.rai@keysight.com.dev.sfcamsd5';
 const password = 'Satyamrai123456@';
 
-// Salesforce connection
 const conn = new jsforce.Connection({
   loginUrl: 'https://test.salesforce.com',
 });
@@ -13,110 +12,72 @@ const conn = new jsforce.Connection({
 // Open SQLite DB
 const db = new sqlite3.Database('./labels1.db');
 
-async function syncLabelsToSalesforce(logCallback = logCallback) {
+async function syncToSalesforce() {
   try {
     await conn.login(username, password);
-    logCallback('✅ Logged into Salesforce');
+    console.log('✅ Logged into Salesforce');
 
-    const baseLabels = [];
-    const translations = {
-      de: [],
-      zh_CN: [],
-      zh_TW: []
-    };
+    db.all(`SELECT * FROM custom_label_updated`, async (err, rows) => {
+      if (err) throw err;
 
-    // Read labels from DB
-    await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM custom_labels1', async (err, rows) => {
-        if (err) return reject(err);
+      // Step 1: Sync base labels
+      const baseLabels = rows.map(row => ({
+        fullName: row.fullName,
+        language: row.language || 'en_US',
+        protected: false,
+        shortDescription: row.shortDescription || '',
+        value: row.value || '',
+      }));
 
-        for (const row of rows) {
-          baseLabels.push({
-            fullName: row.fullName,
-            language: row.language,
-            value: row.value,
-            shortDescription: row.shortDescription || '',
-            protected: false
-          });
-
-          if (row.de) {
-            translations.de.push({
-              name: row.fullName,
-              label: row.de
-            });
-          }
-          if (row.zh_CN) {
-            translations.zh_CN.push({
-              name: row.fullName,
-              label: row.zh_CN
-            });
-          }
-          if (row.zh_TW) {
-            translations.zh_TW.push({
-              name: row.fullName,
-              label: row.zh_TW
-            });
-          }
-        }
-
-        resolve();
-      });
-    });
-
-    // Helper function to upsert in safe chunks
-    async function safeUpsert(type, items, label = '') {
       const chunkSize = 10;
-      for (let i = 0; i < items.length; i += chunkSize) {
-        const chunk = items.slice(i, i + chunkSize);
-        try {
-          const result = await conn.metadata.upsert(type, chunk);
-          logCallback(`✅ Synced ${label} chunk ${i / chunkSize + 1}`);
-        } catch (error) {
-          console.error(`❌ Chunk ${i / chunkSize + 1} failed for ${label}: ${error.message}`);
-          logCallback('🔍 Retrying one by one...');
-          for (const item of chunk) {
-            try {
-              const res = await conn.metadata.upsert(type, item);
-              logCallback(`✔️ Synced: ${item.fullName || item.name}`);
-            } catch (err) {
-              console.error(`❌ Failed: ${item.fullName || item.name} — ${err.message}`);
-            }
-          }
-        }
+      for (let i = 0; i < baseLabels.length; i += chunkSize) {
+        const chunk = baseLabels.slice(i, i + chunkSize);
+        const result = await conn.metadata.upsert('CustomLabel', chunk);
+        console.log(`⬆️ Base Labels Synced (chunk ${i / 10 + 1}):`, result);
       }
-    }
 
-    // Sync base labels
-    logCallback('\n🔄 Syncing base custom labels...');
-    await safeUpsert('CustomLabel', baseLabels, 'base labels');
-
-    // Sync translations
-    for (const locale of ['de', 'zh_CN', 'zh_TW']) {
-      if (translations[locale].length === 0) continue;
-
-      logCallback(`\n🌍 Syncing translations for locale: ${locale}`);
-      const existingTranslation = await conn.metadata.read('Translations', [locale]);
-
-      const updatedTranslation = {
-        fullName: locale,
-        customLabels: [
-          ...(existingTranslation.customLabels || []),
-          ...translations[locale]
-        ]
+      // Step 2: Group translations per locale
+      const locales = ['de', 'zn_CH', 'zn_TW'];
+      const translationMap = {
+        de: [],
+        zn_CH: [],
+        zn_TW: [],
       };
 
-      try {
-        const result = await conn.metadata.upsert('Translations', updatedTranslation);
-        logCallback(`✅ Translations synced for ${locale}:`, result);
-      } catch (err) {
-        console.error(`❌ Failed syncing translations for ${locale}:`, err.message);
-      }
-    }
+      rows.forEach(row => {
+        locales.forEach(locale => {
+          if (row[locale]) {
+            translationMap[locale].push({
+              name: row.fullName,
+              label: row[locale],
+            });
+          }
+        });
+      });
 
-    logCallback('\n🎉 All labels & translations synced to Salesforce!');
+      // Step 3: Upsert translations
+      for (const locale of locales) {
+        const translations = translationMap[locale];
+        if (translations.length === 0) continue;
+
+        const existing = await conn.metadata.read('Translations', [locale]);
+        const existingLabels = existing?.customLabels || [];
+
+        const updatedTranslations = {
+          fullName: locale,
+          customLabels: [...existingLabels.filter(el => !translations.find(t => t.name === el.name)), ...translations],
+        };
+
+        const result = await conn.metadata.upsert('Translations', updatedTranslations);
+        console.log(`🌐 Translations Synced for [${locale}]:`, result);
+      }
+
+      console.log('✅ Sync to Salesforce complete!');
+    });
+
   } catch (err) {
-    console.error('❌ Sync failed:', err);
+    console.error('❌ Sync Failed:', err);
   }
 }
 
-syncLabelsToSalesforce();
+syncToSalesforce();
