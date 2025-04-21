@@ -1,0 +1,108 @@
+.App {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 24px;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+
+header h2 {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+header button {
+  background-color: #0B5FFF;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+nav {
+  display: flex;
+  gap: 24px;
+  border-bottom: 2px solid #e2e2e2;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+nav button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 8px;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: border-color 0.3s ease;
+}
+
+nav button.active {
+  border-bottom: 3px solid #0B5FFF;
+  font-weight: bold;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background-color: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+thead {
+  background-color: #f0f4f8;
+}
+
+td, th {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+input[type="text"], input[type="file"], textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+button.primary {
+  background-color: #0B5FFF;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button.primary:hover {
+  background-color: #084ec4;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
+}
