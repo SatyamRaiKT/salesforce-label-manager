@@ -11,6 +11,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('labels');
 
   const fetchLabels = () => {
+    
     fetch('http://localhost:5000/api/labels')
       .then((res) => res.json())
       .then((data) => {
